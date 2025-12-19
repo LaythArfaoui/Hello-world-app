@@ -1,0 +1,53 @@
+version: 2.1
+
+jobs:
+  build-android-debug:
+    docker:
+      - image: circleci/android:api-33-node
+    steps:
+      - checkout
+      
+      - run:
+          name: Verify android folder exists
+          command: |
+            echo "Checking project structure..."
+            ls -la
+            echo "Android folder contents:"
+            ls -la android/
+            
+      - restore_cache:
+          keys:
+            - dependencies-{{ checksum "package.json" }}
+            
+      - run:
+          name: Install Node dependencies
+          command: npm ci
+          
+      - save_cache:
+          paths:
+            - node_modules
+          key: dependencies-{{ checksum "package.json" }}
+          
+      - run:
+          name: Build Debug APK
+          command: |
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleDebug --console=plain
+            
+      - store_artifacts:
+          path: android/app/build/outputs/apk/debug/
+          destination: android-apk
+          
+      - run:
+          name: Show APK info
+          command: |
+            echo "✅ BUILD SUCCESSFUL!"
+            echo "APK location: android/app/build/outputs/apk/debug/"
+            ls -lh android/app/build/outputs/apk/debug/*.apk
+
+workflows:
+  version: 2
+  build-android:
+    jobs:
+      - build-android-debug
