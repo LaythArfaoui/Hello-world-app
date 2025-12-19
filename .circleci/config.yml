@@ -1,0 +1,60 @@
+version: 2.1
+
+jobs:
+  build-android:
+    docker:
+      - image: cimg/android:2023.09
+    steps:
+      - checkout
+      
+      - run:
+          name: Debug - Show project structure
+          command: |
+            echo "=== PROJECT STRUCTURE ==="
+            ls -la
+            echo ""
+            echo "=== ANDROID FOLDER ==="
+            if [ -d "android" ]; then
+              ls -la android/
+            else
+              echo "❌ ERROR: android/ folder missing!"
+              echo "Run: npx expo prebuild"
+              exit 1
+            fi
+            
+      - restore_cache:
+          keys:
+            - v1-deps-{{ checksum "package.json" }}
+            
+      - run:
+          name: Install dependencies
+          command: npm ci
+          
+      - save_cache:
+          paths:
+            - node_modules
+          key: v1-deps-{{ checksum "package.json" }}
+          
+      - run:
+          name: Build Android APK
+          command: |
+            cd android
+            chmod +x gradlew
+            ./gradlew assembleDebug --stacktrace
+            
+      - store_artifacts:
+          path: android/app/build/outputs/apk/debug/
+          destination: android-apk
+          
+      - run:
+          name: Build Success Message
+          command: |
+            echo "🎉 BUILD SUCCESSFUL!"
+            echo "📱 APK Location: android/app/build/outputs/apk/debug/app-debug.apk"
+            ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+
+workflows:
+  version: 2
+  android-build:
+    jobs:
+      - build-android
