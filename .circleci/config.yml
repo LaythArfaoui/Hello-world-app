@@ -8,19 +8,24 @@ jobs:
       - checkout
       
       - run:
-          name: Debug - Show project structure
+          name: Check Node.js and npm
           command: |
-            echo "=== PROJECT STRUCTURE ==="
-            ls -la
-            echo ""
-            echo "=== ANDROID FOLDER ==="
-            if [ -d "android" ]; then
-              ls -la android/
-            else
-              echo "❌ ERROR: android/ folder missing!"
-              echo "Run: npx expo prebuild"
-              exit 1
+            echo "Node version:"
+            node --version || echo "Node not found"
+            echo "npm version:"
+            npm --version || echo "npm not found"
+            echo "Java version:"
+            java --version
+            
+      - run:
+          name: Install Node.js if missing
+          command: |
+            if ! command -v npm &> /dev/null; then
+              echo "Installing Node.js..."
+              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
+              sudo apt-get install -y nodejs
             fi
+            npm --version
             
       - restore_cache:
           keys:
@@ -47,10 +52,10 @@ jobs:
           destination: android-apk
           
       - run:
-          name: Build Success Message
+          name: Build Success
           command: |
-            echo "🎉 BUILD SUCCESSFUL!"
-            echo "📱 APK Location: android/app/build/outputs/apk/debug/app-debug.apk"
+            echo "✅ BUILD COMPLETE!"
+            echo "APK: android/app/build/outputs/apk/debug/app-debug.apk"
             ls -lh android/app/build/outputs/apk/debug/app-debug.apk
 
 workflows:
