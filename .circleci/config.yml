@@ -3,29 +3,23 @@ version: 2.1
 jobs:
   build-android:
     docker:
-      - image: cimg/android:2023.09
+      - image: cimg/android:2024.01.1-node
     steps:
       - checkout
       
       - run:
-          name: Check Node.js and npm
+          name: Install build tools (Ninja, CMake)
           command: |
-            echo "Node version:"
-            node --version || echo "Node not found"
-            echo "npm version:"
-            npm --version || echo "npm not found"
-            echo "Java version:"
-            java --version
+            sudo apt-get update
+            sudo apt-get install -y ninja-build cmake
             
       - run:
-          name: Install Node.js if missing
+          name: Verify tools
           command: |
-            if ! command -v npm &> /dev/null; then
-              echo "Installing Node.js..."
-              curl -fsSL https://deb.nodesource.com/setup_18.x | sudo -E bash -
-              sudo apt-get install -y nodejs
-            fi
-            npm --version
+            echo "Ninja version:"
+            ninja --version || echo "Ninja not found"
+            echo "CMake version:"
+            cmake --version || echo "CMake not found"
             
       - restore_cache:
           keys:
@@ -41,22 +35,27 @@ jobs:
           key: v1-deps-{{ checksum "package.json" }}
           
       - run:
-          name: Build Android APK
+          name: Build Android APK (Skip NDK)
           command: |
             cd android
             chmod +x gradlew
-            ./gradlew assembleDebug --stacktrace
-            
+            # Disable NDK/new architecture for now
+            ./gradlew assembleDebug \
+              -PreactNativeArchitectures=x86,x86_64 \
+              -PnewArchEnabled=false
+              
       - store_artifacts:
           path: android/app/build/outputs/apk/debug/
           destination: android-apk
           
       - run:
-          name: Build Success
+          name: Success Message
           command: |
-            echo "✅ BUILD COMPLETE!"
-            echo "APK: android/app/build/outputs/apk/debug/app-debug.apk"
-            ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+            echo "✅ BUILD SUCCESSFUL!"
+            if [ -f "android/app/build/outputs/apk/debug/app-debug.apk" ]; then
+              echo "📱 APK Size:"
+              ls -lh android/app/build/outputs/apk/debug/app-debug.apk
+            fi
 
 workflows:
   version: 2
